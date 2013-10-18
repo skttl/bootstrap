@@ -12,6 +12,8 @@ module.exports = function (grunt) {
 
   var fs = require('fs')
   var btoa = require('btoa')
+  var BsLessdocParser = require('./docs/grunt/bs-lessdoc-parser.js')
+  var path = require('path')
 
   // Project configuration.
   grunt.initConfig({
@@ -45,6 +47,9 @@ module.exports = function (grunt) {
       },
       assets: {
         src: ['docs/assets/js/application.js', 'docs/assets/js/customizer.js']
+      },
+      docsGrunt: {
+        src: ['docs/grunt/*.js']
       }
     },
 
@@ -63,6 +68,9 @@ module.exports = function (grunt) {
       },
       assets: {
         src: ['docs/assets/js/application.js', 'docs/assets/js/customizer.js']
+      },
+      docsGrunt: {
+        src: ['docs/grunt/*.js']
       }
     },
 
@@ -235,6 +243,23 @@ module.exports = function (grunt) {
       docs: {}
     },
 
+    jade: {
+      compile: {
+        options: {
+          pretty: true,
+          data: function () {
+            var filePath = path.join(__dirname, 'less/variables.less');
+            var fileContent = fs.readFileSync(filePath, {encoding: 'utf8'});
+            var parser = new BsLessdocParser(fileContent);
+            return {sections: parser.parseFile()};
+          }
+        },
+        files: {
+          'docs/_includes/customizer-variables.html': 'docs/customizer-variables.jade'
+        }
+      }
+    },
+
     validation: {
       options: {
         charset: 'utf-8',
@@ -300,7 +325,7 @@ module.exports = function (grunt) {
   var testSubtasks = [];
   // Skip core tests if running a different subset of the test suite
   if (!process.env.TWBS_TEST || process.env.TWBS_TEST === 'core') {
-    testSubtasks = testSubtasks.concat(['dist-css', 'csslint', 'jshint', 'jscs', 'qunit']);
+    testSubtasks = testSubtasks.concat(['dist-css', 'csslint', 'jshint', 'jscs', 'qunit', 'build-customizer-vars-form']);
   }
   // Skip HTML validation if running a different subset of the test suite
   if (!process.env.TWBS_TEST || process.env.TWBS_TEST === 'validate-html') {
@@ -360,7 +385,9 @@ module.exports = function (grunt) {
   });
 
   // task for building customizer
-  grunt.registerTask('build-customizer', 'Add scripts/less files to customizer.', function () {
+  grunt.registerTask('build-customizer', ['build-customizer-vars-form', 'build-raw-files']);
+  grunt.registerTask('build-customizer-vars-form', ['jade']);
+  grunt.registerTask('build-raw-files', 'Add scripts/less files to customizer.', function () {
     function getFiles(type) {
       var files = {}
       fs.readdirSync(type)
